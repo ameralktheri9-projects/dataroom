@@ -1,0 +1,43 @@
+# NFR-05 / NFR-13 and BRD §9 step 2: every pull request runs type check, lint, tests (incl. access rules)
+# and a migration check before it can merge. Vercel builds the preview deployment separately.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type check
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit + access-rule tests (applies migrations to an in-memory Postgres)
+        run: npm test
+      - name: Migration check
+        run: |
+          npm run db:check
+          # schema.ts and ./drizzle must agree: generating again must produce nothing new
+          npx drizzle-kit generate --name ci-check
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::schema.ts changed without a migration. Run npm run db:generate and commit ./drizzle."
+            git status --porcelain drizzle
+            exit 1
+          fi
+      - name: Build
+        run: npm run build:app
+        env:
+          DATABASE_URL: pglite:./.data/ci
+          APP_SECRET: ci-only-secret-not-used-anywhere-else-000

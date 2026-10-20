@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-brand: var(--brand-primary, #1c1917);
+  --color-accent: var(--brand-accent, #2563eb);
+}
+
+html,
+body {
+  background: #fafaf9;
+  color: #1c1917;
+}
+
+/* Screenshot deterrence (FR-25): nothing prints from a protected page. */
+@media print {
+  .no-print,
+  body[data-protected="true"] > * {
+    display: none !important;
+  }
+  body[data-protected="true"]::after {
+    content: "Printing is disabled for this document.";
+    display: block;
+    padding: 2rem;
+  }
+}
+
+.protected-blur {
+  filter: blur(18px);
+  transition: filter 0.05s;
+}
+
+[data-protected="true"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
