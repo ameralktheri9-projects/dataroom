@@ -23,11 +23,24 @@ const schema = z.object({
 
 export type Env = z.infer<typeof schema>;
 
+/**
+ * Fill gaps from what the hosting platform already provides, so a fresh Vercel + Neon project
+ * only needs APP_SECRET set by hand:
+ * - Neon's Vercel integration may expose the database as POSTGRES_URL instead of DATABASE_URL.
+ * - Vercel sets VERCEL_PROJECT_PRODUCTION_URL (e.g. dataroom.vercel.app) on every deployment.
+ */
+function withPlatformDefaults(e: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out = { ...e };
+  out.DATABASE_URL ||= e.POSTGRES_URL;
+  if (!out.APP_URL && e.VERCEL_PROJECT_PRODUCTION_URL) out.APP_URL = `https://${e.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return out;
+}
+
 let cached: Env | null = null;
 
 export function env(): Env {
   if (cached) return cached;
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse(withPlatformDefaults(process.env));
   if (!parsed.success) {
     const msg = parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`Invalid environment configuration:\n${msg}\nSee .env.example.`);

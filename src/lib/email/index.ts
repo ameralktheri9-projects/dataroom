@@ -36,12 +36,14 @@ export async function sendEmail(msg: EmailMessage): Promise<boolean> {
       if (error) throw new Error(error.message);
       return true;
     }
+    console.info(`[email] to=${msg.to} subject="${msg.subject}"\n${msg.text}\n`);
+    // Vercel's filesystem is read-only: there the message only goes to the function logs.
+    if (process.env.VERCEL) return true;
     const dir = path.resolve(".data/outbox");
     await mkdir(dir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const safeTo = msg.to.replace(/[^a-z0-9@._-]/gi, "_");
     await writeFile(path.join(dir, `${stamp}_${safeTo}.html`), `<!-- To: ${msg.to}\nSubject: ${msg.subject} -->\n${msg.html}`);
-    console.info(`[email] to=${msg.to} subject="${msg.subject}"\n${msg.text}\n`);
     return true;
   } catch (err) {
     console.error("[email] send failed", err);

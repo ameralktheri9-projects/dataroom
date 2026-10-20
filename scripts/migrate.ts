@@ -5,8 +5,8 @@ import { config } from "dotenv";
 config({ path: ".env.local", override: true });
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url) throw new Error("DATABASE_URL is not set. On Vercel, connect the Neon integration (Storage tab) and redeploy.");
 
   if (url.startsWith("pglite:")) {
     const { mkdirSync } = await import("node:fs");
@@ -23,7 +23,7 @@ async function main() {
     const { drizzle } = await import("drizzle-orm/postgres-js");
     const { migrate } = await import("drizzle-orm/postgres-js/migrator");
     // Migrations need a direct (non-pooled) connection; prefer DATABASE_URL_UNPOOLED when Neon's Vercel integration sets it.
-    const client = postgres(process.env.DATABASE_URL_UNPOOLED ?? url, { max: 1 });
+    const client = postgres(process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING || url, { max: 1 });
     await migrate(drizzle({ client }), { migrationsFolder: "./drizzle" });
     await client.end();
   }
